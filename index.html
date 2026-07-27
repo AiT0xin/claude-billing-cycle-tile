@@ -282,10 +282,16 @@
   }
   .d.past { color: var(--faint); }
   .d:hover { background: var(--track); }
-  /* Days in the cycle this renewal day produces. */
+  /* Days in the committed cycle. */
   .d.in { background: var(--accent); color: var(--on-accent); font-weight: 700; }
   .d.in:hover { background: var(--accent); }
+  /* A range being picked but not yet committed — lighter, so it reads as
+     provisional next to the solid "in" fill of a saved cycle. */
+  .d.pick { background: var(--accent-dim); color: var(--on-accent); }
+  .d.pick:hover { background: var(--accent-dim); }
+  .d.pick-start { box-shadow: inset 0 0 0 1.5px var(--surface); }
   .d.today { box-shadow: inset 0 0 0 1.5px var(--accent); }
+  .d.pick-start.today { box-shadow: inset 0 0 0 1.5px var(--surface), inset 0 0 0 3px var(--accent); }
   .d:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
   .pop-note {
@@ -349,7 +355,7 @@
                  stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
           </button>
 
-          <div class="pop" id="pop" hidden role="dialog" aria-label="Choose your renewal date">
+          <div class="pop" id="pop" hidden role="dialog" aria-label="Choose your billing cycle">
             <div class="pop-head">
               <button class="nav" id="calPrev" type="button" aria-label="Previous month">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -379,8 +385,9 @@
 <script>
   // ── Config ────────────────────────────────────────────────────────────
   // Fallback renewal day, used when nothing else is set. Set your real one
-  // per-embed with ?day=15 in the URL — that keeps your billing date in your
-  // own Notion page rather than in this repo. Once seen, it's remembered.
+  // per-embed with ?day=15 in the URL, or ?start=2026-07-05&end=2026-08-03
+  // for a custom-length cycle — either way that keeps your billing dates in
+  // your own Notion page rather than in this repo.
   const DEFAULT_ANCHOR_DAY = 1;
 
   const params = new URLSearchParams(location.search);
@@ -392,41 +399,83 @@
     document.documentElement.dataset.theme = themeParam;
   }
 
-  const persistDay = (d) => {
-    try { localStorage.setItem(KEY, String(d)); } catch { /* blocked */ }
-  };
-
-  // Day of the month the subscription renews on. If a month is too short
-  // (February, say), it clamps to that month's last day.
-  let anchorDay = (() => {
-    const fromUrl = parseInt(params.get('day'), 10);
-    if (Number.isInteger(fromUrl) && fromUrl >= 1 && fromUrl <= 31) {
-      persistDay(fromUrl);
-      return fromUrl;
-    }
-    let stored = NaN;
-    try { stored = parseInt(localStorage.getItem(KEY), 10); } catch { /* blocked */ }
-    return Number.isInteger(stored) && stored >= 1 && stored <= 31
-      ? stored
-      : DEFAULT_ANCHOR_DAY;
-  })();
-
   const DAY = 86400000;
   // Noon anchoring keeps day arithmetic immune to daylight-saving shifts.
   const noon = (y, m, d) => new Date(y, m, d, 12, 0, 0, 0);
   const lastDayOf = (y, m) => new Date(y, m + 1, 0).getDate();
-  const startOf = (y, m) => noon(y, m, Math.min(anchorDay, lastDayOf(y, m)));
   const daysBetween = (a, b) => Math.round((b - a) / DAY);
+  const isoOf = (d) =>
+    d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  function parseISODate(str) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(str || '');
+    if (!m) return null;
+    const y = +m[1], mo = +m[2] - 1, d = +m[3];
+    const dt = noon(y, mo, d);
+    return (dt.getFullYear() === y && dt.getMonth() === mo && dt.getDate() === d) ? dt : null;
+  }
 
-  const fmt      = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short' });
-  const fmtFull  = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
-  const fmtMonth = new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' });
-  // Locale-correct weekday initials, starting Sunday.
-  const fmtDow = new Intl.DateTimeFormat(undefined, { weekday: 'short' });
-  const DOW = Array.from({ length: 7 }, (_, i) => fmtDow.format(new Date(2024, 8, 1 + i)));
+  // ── Cycle config ──────────────────────────────────────────────────────
+  // Two shapes:
+  //   { mode: 'day', day }             — renews on the same day every month
+  //                                       (variable length: 28–31 days).
+  //   { mode: 'range', start, len }    — a fixed-length cycle tiled from an
+  //                                       explicit start date, for cycles
+  //                                       that don't follow the calendar
+  //                                       month. Set by picking two
+  //                                       different dates in the calendar.
+  function persistConfig(cfg) {
+    try { localStorage.setItem(KEY, JSON.stringify(cfg)); } catch { /* blocked */ }
+  }
+
+  function loadConfig() {
+    const s = params.get('start'), e = params.get('end');
+    if (s && e) {
+      const sd = parseISODate(s), ed = parseISODate(e);
+      if (sd && ed && ed >= sd) {
+        const cfg = { mode: 'range', start: isoOf(sd), len: daysBetween(sd, ed) + 1 };
+        persistConfig(cfg);
+        return cfg;
+      }
+    }
+    const d = parseInt(params.get('day'), 10);
+    if (Number.isInteger(d) && d >= 1 && d <= 31) {
+      const cfg = { mode: 'day', day: d };
+      persistConfig(cfg);
+      return cfg;
+    }
+    let raw = null;
+    try { raw = localStorage.getItem(KEY); } catch { /* blocked */ }
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        // JSON.parse('30') succeeds and returns the number 30 — it does not
+        // throw — so the legacy bare-day-number format has to be checked
+        // here, not assumed to fall into the catch below.
+        if (typeof parsed === 'number' && parsed >= 1 && parsed <= 31) {
+          return { mode: 'day', day: parsed };
+        }
+        if (parsed?.mode === 'range' && typeof parsed.start === 'string' && parsed.len >= 1) return parsed;
+        if (parsed?.mode === 'day' && parsed.day >= 1 && parsed.day <= 31) return parsed;
+      } catch {
+        // Non-numeric, non-JSON garbage — fall through to the default.
+      }
+    }
+    return { mode: 'day', day: DEFAULT_ANCHOR_DAY };
+  }
+
+  let cycleConfig = loadConfig();
+  const startOf = (y, m) => noon(y, m, Math.min(cycleConfig.day, lastDayOf(y, m)));
 
   // The cycle containing `date`.
   function cycle(date) {
+    if (cycleConfig.mode === 'range') {
+      const rangeStart = parseISODate(cycleConfig.start) || date;
+      const len = Math.max(1, cycleConfig.len | 0);
+      const offset = Math.floor(daysBetween(rangeStart, date) / len);
+      const start = new Date(rangeStart.getTime() + offset * len * DAY);
+      const next = new Date(start.getTime() + len * DAY);
+      return { start, next, renewal: new Date(next - DAY), total: len - 1 };
+    }
     let y = date.getFullYear(), m = date.getMonth();
     if (date < startOf(y, m)) m -= 1;         // still in last month's cycle
     const start = startOf(y, m);
@@ -440,17 +489,36 @@
     };
   }
 
+  const fmt      = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short' });
+  const fmtFull  = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+  const fmtMonth = new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' });
+  // Locale-correct weekday initials, starting Sunday.
+  const fmtDow = new Intl.DateTimeFormat(undefined, { weekday: 'short' });
+  const DOW = Array.from({ length: 7 }, (_, i) => fmtDow.format(new Date(2024, 8, 1 + i)));
+
   const todayNoon = () => {
     const n = new Date();
     return noon(n.getFullYear(), n.getMonth(), n.getDate());
   };
 
   // ── Calendar popover ──────────────────────────────────────────────────
+  // Click one date, then a second, to set a custom-length cycle running
+  // between them — the range previews live as you hover. Click the same
+  // date twice instead to fall back to the simple "same day every month"
+  // cycle, same as a single click always did before.
   const trigger = document.getElementById('trigger');
   const pop = document.getElementById('pop');
-  let viewY, viewM;   // left-hand month currently shown
+  let viewY, viewM;          // left-hand month currently shown
+  let pickStart = null;      // Date | null — set after the first click
+  let hoverEnd = null;       // Date | null — live end while hovering
 
-  function monthGrid(y, m, c, today) {
+  function pickRange() {
+    if (!pickStart) return null;
+    const end = hoverEnd || pickStart;
+    return pickStart <= end ? [pickStart, end] : [end, pickStart];
+  }
+
+  function monthGrid(y, m, today, committed, preview) {
     const lead = new Date(y, m, 1).getDay();
     const count = lastDayOf(y, m);
 
@@ -463,30 +531,57 @@
     for (let d = 1; d <= count; d++) {
       const date = noon(y, m, d);
       const cls = ['d'];
-      if (date >= c.start && date <= c.renewal) cls.push('in');
-      else if (date < today) cls.push('past');
+      if (preview) {
+        if (date >= preview[0] && date <= preview[1]) cls.push('pick');
+        if (pickStart && date.getTime() === pickStart.getTime()) cls.push('pick-start');
+      } else if (date >= committed.start && date <= committed.renewal) {
+        cls.push('in');
+      }
+      if (date < today) cls.push('past');
       if (date.getTime() === today.getTime()) cls.push('today');
-      cells += `<button type="button" class="${cls.join(' ')}" data-day="${d}" ` +
-               `aria-label="Set renewal to day ${d}">${d}</button>`;
+      cells += `<button type="button" class="${cls.join(' ')}" data-iso="${isoOf(date)}" ` +
+               `aria-label="${fmtFull.format(date)}">${d}</button>`;
     }
     return `<div class="grid">${cells}</div>`;
   }
 
+  function updateNote(committed, preview) {
+    const note = document.getElementById('popNote');
+    if (preview) {
+      if (hoverEnd && hoverEnd.getTime() !== pickStart.getTime()) {
+        const days = daysBetween(preview[0], preview[1]) + 1;
+        note.textContent =
+          `${fmtFull.format(preview[0])} – ${fmtFull.format(preview[1])} · ${days} days · click to set this custom cycle`;
+      } else {
+        note.textContent =
+          `Start: ${fmtFull.format(pickStart)} · click an end date for a custom cycle, ` +
+          `or click this date again to renew on day ${pickStart.getDate()} every month`;
+      }
+    } else if (cycleConfig.mode === 'range') {
+      note.textContent =
+        `Custom ${committed.total + 1}-day cycle from ${fmtFull.format(committed.start)} · click a date to change it`;
+    } else {
+      note.textContent = `Renews on day ${cycleConfig.day} of each month · click a date to change it`;
+    }
+  }
+
   function renderCal() {
     const today = todayNoon();
-    const c = cycle(today);
+    const committed = cycle(today);
+    const preview = pickRange();
     const bY = viewM === 11 ? viewY + 1 : viewY;
     const bM = (viewM + 1) % 12;
 
     document.getElementById('mnameA').textContent = fmtMonth.format(new Date(viewY, viewM, 1));
     document.getElementById('mnameB').textContent = fmtMonth.format(new Date(bY, bM, 1));
-    document.getElementById('calA').innerHTML = monthGrid(viewY, viewM, c, today);
-    document.getElementById('calB').innerHTML = monthGrid(bY, bM, c, today);
-    document.getElementById('popNote').textContent =
-      `Renews on day ${anchorDay} of each month · pick any date to change it`;
+    document.getElementById('calA').innerHTML = monthGrid(viewY, viewM, today, committed, preview);
+    document.getElementById('calB').innerHTML = monthGrid(bY, bM, today, committed, preview);
+    updateNote(committed, preview);
   }
 
   function openPop() {
+    pickStart = null;
+    hoverEnd = null;
     const c = cycle(todayNoon());
     viewY = c.start.getFullYear();
     viewM = c.start.getMonth();
@@ -496,6 +591,8 @@
   }
 
   function closePop() {
+    pickStart = null;
+    hoverEnd = null;
     pop.hidden = true;
     trigger.setAttribute('aria-expanded', 'false');
   }
@@ -514,22 +611,57 @@
     renderCal();
   });
 
-  // Picking any date sets the renewal day to that day of the month.
   pop.addEventListener('click', (e) => {
+    // Must stop here, before any rerender: renderCal() replaces the grid's
+    // innerHTML synchronously, which detaches e.target from the DOM mid-
+    // bubble. The document-level outside-click-closer would then see
+    // e.target.closest('.picker') return null on the now-detached node and
+    // incorrectly treat this as an outside click.
+    e.stopPropagation();
     const cell = e.target.closest('.d');
     if (!cell) return;
-    anchorDay = Number(cell.dataset.day);
-    persistDay(anchorDay);
+    const date = parseISODate(cell.dataset.iso);
+    if (!date) return;
+
+    if (!pickStart) {
+      pickStart = date;
+      hoverEnd = date;
+      renderCal();
+      return;
+    }
+
+    cycleConfig = date.getTime() === pickStart.getTime()
+      ? { mode: 'day', day: date.getDate() }
+      : (() => {
+          const [start, end] = date < pickStart ? [date, pickStart] : [pickStart, date];
+          return { mode: 'range', start: isoOf(start), len: daysBetween(start, end) + 1 };
+        })();
+
+    persistConfig(cycleConfig);
+    pickStart = null;
+    hoverEnd = null;
     render();
     renderCal();
     closePop();
+  });
+
+  pop.addEventListener('mouseover', (e) => {
+    if (!pickStart) return;
+    const cell = e.target.closest('.d');
+    if (!cell) return;
+    const date = parseISODate(cell.dataset.iso);
+    if (!date || (hoverEnd && date.getTime() === hoverEnd.getTime())) return;
+    hoverEnd = date;
+    renderCal();
   });
 
   document.addEventListener('click', (e) => {
     if (!pop.hidden && !e.target.closest('.picker')) closePop();
   });
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !pop.hidden) { closePop(); trigger.focus(); }
+    if (e.key !== 'Escape' || pop.hidden) return;
+    if (pickStart) { pickStart = null; hoverEnd = null; renderCal(); }
+    else { closePop(); trigger.focus(); }
   });
 
   // ── Render ────────────────────────────────────────────────────────────
