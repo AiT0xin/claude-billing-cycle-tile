@@ -22,6 +22,12 @@ append a query parameter to the embed URL:
 - `?theme=dark`
 - `?theme=light`
 
+**Triple-click the tile** to cycle its background: normal → solid `#161616`
+→ transparent → back. Solid pins the dark palette and fills the whole embed;
+transparent keeps following the viewer's theme, so it stays readable on a
+light or dark page. The choice is saved in `localStorage`, which Notion's
+sandboxed iframe may not persist — reach for `?theme=` when it must stick.
+
 ## Configuration
 
 The one value that matters is the day of the month your subscription renews
