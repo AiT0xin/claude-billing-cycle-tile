@@ -28,7 +28,7 @@ The one value that matters is the day of the month your subscription renews
 on. Set it in the embed URL:
 
 ```
-https://<user>.github.io/claude-billing-cycle-tile/?day=30
+https://<user>.github.io/claude-billing-cycle-tile/?day=15
 ```
 
 Keeping it in the URL means your actual billing date lives in your own Notion
@@ -46,7 +46,7 @@ three previous and two upcoming cycles.
 Parameters combine, so a fully specified embed looks like:
 
 ```
-?day=30&theme=dark
+?day=15&theme=dark
 ```
 
 ## Notes on accuracy
