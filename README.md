@@ -38,8 +38,9 @@ There are two cycle shapes:
 
 - **Same day every month** — the classic monthly subscription. Length varies
   28–31 days as the calendar does.
-- **Custom range** — a fixed-length cycle tiled from an explicit start date,
-  for anything that doesn't follow the calendar month.
+- **Custom range** — the exact start and end dates you pick, shown literally.
+  It does not repeat: the tile displays the period you chose, and reports
+  "Upcoming" or "Ended" if today falls outside it.
 
 ### From the tile
 
@@ -66,9 +67,10 @@ https://<user>.github.io/claude-billing-cycle-tile/?start=2026-07-05&end=2026-08
 
 Keeping it in the URL means your actual billing dates live in your own Notion
 page rather than in this public repo. `?start=`/`?end=` are ISO dates
-(`YYYY-MM-DD`) and together set a custom range, same as picking two dates in
-the tile. `?day=` falls back to the 1st if nothing is set, and clamps in
-months too short to contain it (February, for instance).
+(`YYYY-MM-DD`) and together set a literal custom range, same as picking two
+dates in the tile — the period shown is exactly the one given, with no
+rolling forward. `?day=` falls back to the 1st if nothing is set, and clamps
+in months too short to contain it (February, for instance).
 
 **The URL wins over the picker.** Either `?day=` or `?start=`/`?end=` is
 re-applied on every load, so a choice made in the calendar won't survive a

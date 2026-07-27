@@ -432,7 +432,7 @@
     if (s && e) {
       const sd = parseISODate(s), ed = parseISODate(e);
       if (sd && ed && ed >= sd) {
-        const cfg = { mode: 'range', start: isoOf(sd), len: daysBetween(sd, ed) + 1 };
+        const cfg = { mode: 'range', start: isoOf(sd), end: isoOf(ed) };
         persistConfig(cfg);
         return cfg;
       }
@@ -454,7 +454,16 @@
         if (typeof parsed === 'number' && parsed >= 1 && parsed <= 31) {
           return { mode: 'day', day: parsed };
         }
-        if (parsed?.mode === 'range' && typeof parsed.start === 'string' && parsed.len >= 1) return parsed;
+        if (parsed?.mode === 'range' && typeof parsed.start === 'string') {
+          if (typeof parsed.end === 'string' && parseISODate(parsed.end)) return parsed;
+          // Migrate the earlier {start, len} shape, which repeated the range
+          // forward instead of honouring it literally.
+          const sd = parseISODate(parsed.start);
+          if (sd && parsed.len >= 1) {
+            return { mode: 'range', start: parsed.start,
+                     end: isoOf(new Date(sd.getTime() + (parsed.len - 1) * DAY)) };
+          }
+        }
         if (parsed?.mode === 'day' && parsed.day >= 1 && parsed.day <= 31) return parsed;
       } catch {
         // Non-numeric, non-JSON garbage — fall through to the default.
@@ -466,15 +475,29 @@
   let cycleConfig = loadConfig();
   const startOf = (y, m) => noon(y, m, Math.min(cycleConfig.day, lastDayOf(y, m)));
 
-  // The cycle containing `date`.
+  // The cycle to display.
+  //
+  // A custom range is taken literally: the dates you picked are the dates
+  // shown, full stop. It deliberately does NOT repeat forward to whichever
+  // window happens to contain today — doing that meant any range you chose
+  // snapped back to "today's window", so you could never actually display
+  // the dates you selected.
+  //
+  // Day mode is inherently recurring, so it still rolls to the current month.
   function cycle(date) {
     if (cycleConfig.mode === 'range') {
-      const rangeStart = parseISODate(cycleConfig.start) || date;
-      const len = Math.max(1, cycleConfig.len | 0);
-      const offset = Math.floor(daysBetween(rangeStart, date) / len);
-      const start = new Date(rangeStart.getTime() + offset * len * DAY);
-      const next = new Date(start.getTime() + len * DAY);
-      return { start, next, renewal: new Date(next - DAY), total: len - 1 };
+      const start = parseISODate(cycleConfig.start);
+      const renewal = parseISODate(cycleConfig.end);
+      if (start && renewal && renewal >= start) {
+        return {
+          start,
+          renewal,
+          next: new Date(renewal.getTime() + DAY),
+          total: daysBetween(start, renewal)
+        };
+      }
+      // Corrupt range — fall through to a sane monthly cycle rather than
+      // rendering NaNs.
     }
     let y = date.getFullYear(), m = date.getMonth();
     if (date < startOf(y, m)) m -= 1;         // still in last month's cycle
@@ -574,7 +597,8 @@
       }
     } else if (cycleConfig.mode === 'range') {
       note.textContent =
-        `Custom ${committed.total + 1}-day cycle from ${fmtFull.format(committed.start)} · click a date to change it`;
+        `${fmtFull.format(committed.start)} – ${fmtFull.format(committed.renewal)} · ` +
+        `${committed.total + 1} days · click a date to change it`;
     } else {
       note.textContent = `Renews on day ${cycleConfig.day} of each month · click a date to change it`;
     }
@@ -657,7 +681,7 @@
       ? { mode: 'day', day: date.getDate() }
       : (() => {
           const [start, end] = date < pickStart ? [date, pickStart] : [pickStart, date];
-          return { mode: 'range', start: isoOf(start), len: daysBetween(start, end) + 1 };
+          return { mode: 'range', start: isoOf(start), end: isoOf(end) };
         })();
 
     persistConfig(cycleConfig);
@@ -701,20 +725,29 @@
     const used = Math.max(0, Math.min(elapsed, c.total));
     const left = c.total - used;
     const pct = c.total > 0 ? (used / c.total) * 100 : 0;
+    // A literal custom range can sit wholly in the past or future; day mode
+    // always brackets today, so these only ever fire for a picked range.
+    const upcoming = elapsed < 0;
+    const ended = elapsed > c.total;
 
-    document.getElementById('fill').style.width = pct.toFixed(2) + '%';
+    document.getElementById('fill').style.width = (upcoming ? 0 : pct).toFixed(2) + '%';
     document.getElementById('usedN').textContent = used + 'd';
     document.getElementById('leftN').textContent = left + 'd';
-    document.getElementById('scaleLeft').textContent = `Day ${used} of ${c.total}`;
+    document.getElementById('scaleLeft').textContent =
+      upcoming ? `Starts ${fmt.format(c.start)}` : `Day ${used} of ${c.total}`;
     document.getElementById('scaleRight').textContent =
-      left === 0 ? 'Renews today' : `${left} day${left === 1 ? '' : 's'} left`;
-    document.getElementById('renews').textContent = 'Renews ' + fmtFull.format(c.renewal);
+      ended ? 'Cycle ended'
+      : upcoming ? `${-elapsed} day${elapsed === -1 ? '' : 's'} away`
+      : left === 0 ? 'Renews today'
+      : `${left} day${left === 1 ? '' : 's'} left`;
+    document.getElementById('renews').textContent =
+      (ended ? 'Ended ' : 'Renews ') + fmtFull.format(c.renewal);
     document.getElementById('triggerLabel').textContent =
       `${fmt.format(c.start)} – ${fmt.format(c.renewal)}`;
 
     const badge = document.getElementById('badge');
-    badge.textContent = left + 'd left';
-    badge.dataset.state = left <= 3 ? 'urgent' : '';
+    badge.textContent = upcoming ? 'Upcoming' : ended ? 'Ended' : left + 'd left';
+    badge.dataset.state = (!upcoming && !ended && left <= 3) ? 'urgent' : '';
   }
 
   render();
