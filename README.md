@@ -34,36 +34,53 @@ sandboxed iframe may not persist — reach for `?theme=` when it must stick.
 
 ## Configuration
 
-The one value that matters is the day of the month your subscription renews
-on. Set it in the embed URL:
+There are two cycle shapes:
+
+- **Same day every month** — the classic monthly subscription. Length varies
+  28–31 days as the calendar does.
+- **Custom range** — a fixed-length cycle tiled from an explicit start date,
+  for anything that doesn't follow the calendar month.
+
+### From the tile
+
+Click the date range in the corner to open a two-month calendar.
+
+- **Click one date, then a different date** — sets a custom cycle running
+  between them (inclusive), previewed live as you hover the second date
+  before you commit.
+- **Click one date, then click it again** — sets the simple "renews on this
+  day every month" cycle. This is the fast path if you don't need a custom
+  length: one date, clicked twice.
+
+Either way the current cycle is highlighted first, so you can see what you're
+about to replace before you click.
+
+### From the URL
 
 ```
 https://<user>.github.io/claude-billing-cycle-tile/?day=15
 ```
+```
+https://<user>.github.io/claude-billing-cycle-tile/?start=2026-07-05&end=2026-08-03
+```
 
-Keeping it in the URL means your actual billing date lives in your own Notion
-page rather than in this public repo. The value is remembered in
-`localStorage` once seen, and falls back to the 1st if nothing is set. Months
-too short to contain the day (February, for instance) clamp to their last day.
+Keeping it in the URL means your actual billing dates live in your own Notion
+page rather than in this public repo. `?start=`/`?end=` are ISO dates
+(`YYYY-MM-DD`) and together set a custom range, same as picking two dates in
+the tile. `?day=` falls back to the 1st if nothing is set, and clamps in
+months too short to contain it (February, for instance).
 
-To bake in a default instead, edit `DEFAULT_ANCHOR_DAY` near the top of the
+**The URL wins over the picker.** Either `?day=` or `?start=`/`?end=` is
+re-applied on every load, so a choice made in the calendar won't survive a
+refresh while the parameter is present. Pick one: keep the parameter in the
+embed URL, *or* drop it and use the picker. In Notion the URL is the reliable
+choice — embeds render in a sandboxed iframe where `localStorage` is often
+unavailable.
+
+To bake in a different default, edit `DEFAULT_ANCHOR_DAY` near the top of the
 `<script>` block in `index.html`.
 
-You can also set it from the tile: click the date range in the corner to open
-a two-month calendar and pick any date. The day-of-month you click becomes the
-renewal day, and the current cycle is highlighted so you can see what you are
-choosing.
-
-**The URL wins over the picker.** If `?day=` is present it is re-applied on
-every load, so a date chosen in the calendar won't survive a refresh. Pick one:
-put `?day=` in the embed URL, *or* leave it off and use the picker. In Notion
-the URL is the reliable choice — embeds render in a sandboxed iframe where
-`localStorage` is often unavailable.
-
-Everything else is derived: the cycle runs from the anchor day to the day
-before the next anchor day.
-
-Parameters combine, so a fully specified embed looks like:
+Parameters combine with the theme override, e.g.:
 
 ```
 ?day=15&theme=dark
