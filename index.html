@@ -12,11 +12,9 @@
     --hairline:   #ebe3e0;
     --ink:        #21252c;
     --muted:      #7d736e;
-    --faint:      #c4bab5;
     --accent:     #ce5138;
     --accent-dim: #e08a76;
-    --on-accent:  #ffffff;
-    --tint:       #f7e2dc;
+    --track:      #f0e7e4;
     --shadow:     0 1px 2px rgba(60, 36, 30, .06), 0 8px 24px -12px rgba(60, 36, 30, .16);
   }
   @media (prefers-color-scheme: dark) {
@@ -26,25 +24,22 @@
       --hairline:   #2b303b;
       --ink:        #eceef2;
       --muted:      #7b8391;
-      --faint:      #4a5160;
       --accent:     #ef806b;
       --accent-dim: #a85a4b;
-      --on-accent:  #1b1f28;
-      --tint:       #38282a;
+      --track:      #2d323e;
       --shadow:     none;
     }
   }
   :root[data-theme="light"] {
     --surface: #ffffff; --surface-2: #faf7f6; --hairline: #ebe3e0;
-    --ink: #21252c; --muted: #7d736e; --faint: #c4bab5;
-    --accent: #ce5138; --accent-dim: #e08a76; --on-accent: #ffffff; --tint: #f7e2dc;
+    --ink: #21252c; --muted: #7d736e; --accent: #ce5138;
+    --accent-dim: #e08a76; --track: #f0e7e4;
     --shadow: 0 1px 2px rgba(60,36,30,.06), 0 8px 24px -12px rgba(60,36,30,.16);
   }
   :root[data-theme="dark"] {
     --surface: #1b1f28; --surface-2: #20252f; --hairline: #2b303b;
-    --ink: #eceef2; --muted: #7b8391; --faint: #4a5160;
-    --accent: #ef806b; --accent-dim: #a85a4b; --on-accent: #1b1f28; --tint: #38282a;
-    --shadow: none;
+    --ink: #eceef2; --muted: #7b8391; --accent: #ef806b;
+    --accent-dim: #a85a4b; --track: #2d323e; --shadow: none;
   }
 
   /* Transparent page so the tile sits on Notion's own background. */
@@ -73,7 +68,7 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 14px 20px;
+    padding: 16px 20px;
     border-bottom: 1px solid var(--hairline);
     background: var(--surface-2);
   }
@@ -84,6 +79,7 @@
     font-size: 1.0625rem;
     font-weight: 700;
     letter-spacing: -.005em;
+    text-wrap: balance;
   }
   .badge {
     flex: none;
@@ -98,89 +94,44 @@
   }
   .badge[data-state="urgent"] { color: var(--accent); border-color: var(--accent-dim); }
 
-  .body { padding: 16px 20px 18px; }
+  /* ── Body ── */
+  .body { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
 
-  /* ── Calendar ── */
-  .cal {
-    display: grid;
-    grid-template-columns: auto 1fr 1fr auto;
-    align-items: start;
-    gap: 0 20px;
+  .track {
+    position: relative;
+    height: 6px;
+    border-radius: 999px;
+    background: var(--track);
+    overflow: hidden;
   }
-  .nav {
-    align-self: center;
-    width: 30px;
-    height: 30px;
-    display: grid;
-    place-items: center;
-    padding: 0;
-    border: 0;
-    border-radius: 8px;
-    background: transparent;
+  .fill {
+    height: 100%;
+    width: 0;
+    border-radius: 999px;
+    background: var(--accent);
+    transition: width .7s cubic-bezier(.22, 1, .36, 1);
+  }
+  @media (prefers-reduced-motion: reduce) { .fill { transition: none; } }
+
+  .scale {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
     color: var(--muted);
-    cursor: pointer;
-    transition: background-color .15s, color .15s;
-  }
-  .nav:hover:not(:disabled) { background: var(--surface-2); color: var(--ink); }
-  .nav:disabled { color: var(--faint); cursor: default; }
-  .nav:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-
-  .month { max-width: 268px; margin: 0 auto; width: 100%; }
-  .month-name {
-    margin: 0 0 12px;
-    text-align: center;
-    font-size: .9375rem;
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-  }
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 2px;
-  }
-  .dow {
-    padding-bottom: 6px;
-    text-align: center;
-    font-size: .625rem;
-    letter-spacing: .06em;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
-  .dow.end { color: var(--accent-dim); }
-
-  .day {
-    aspect-ratio: 1 / 1;
-    display: grid;
-    place-items: center;
-    border-radius: 7px;
     font-size: .8125rem;
     font-variant-numeric: tabular-nums;
-    color: var(--faint);
   }
-  /* Days still to come in this cycle: solid. */
-  .day.in { background: var(--accent); color: var(--on-accent); font-weight: 700; }
-  /* Days already passed: outline only. Inset so the cell doesn't shift. */
-  .day.used {
-    background: transparent;
-    color: var(--accent);
-    outline: 1.5px solid var(--accent);
-    outline-offset: -1.5px;
-  }
-  .day.today { box-shadow: 0 0 0 2px var(--surface), 0 0 0 3.5px var(--accent); font-weight: 700; }
 
-  /* ── Footer stats ── */
-  .foot {
+  .readout {
     display: flex;
     align-items: flex-end;
     gap: 28px;
-    margin-top: 18px;
-    padding-top: 16px;
-    border-top: 1px solid var(--hairline);
+    padding-top: 2px;
   }
   .stats { display: flex; gap: 28px; flex: 1 1 auto; }
   .stat { display: flex; flex-direction: column; gap: 4px; }
   .stat .n {
-    font-size: 1.875rem;
+    font-size: 2.125rem;
     font-weight: 700;
     line-height: 1;
     font-variant-numeric: tabular-nums;
@@ -193,54 +144,41 @@
     text-transform: uppercase;
     color: var(--muted);
   }
-  .meta { text-align: right; }
-  .renews { color: var(--muted); font-size: .9375rem; font-variant-numeric: tabular-nums; }
-  .range { margin-top: 4px; font-size: .8125rem; color: var(--faint); font-variant-numeric: tabular-nums; }
 
-  .controls { margin-top: 14px; }
-  .actions, .editor { display: flex; align-items: center; gap: 8px; }
-  /* Must come after the rule above: a bare `display: flex` outranks the
-     hidden attribute's UA style, which would leave both rows visible. */
-  .actions[hidden], .editor[hidden] { display: none; }
-  .editor label {
-    font-size: .6875rem;
-    letter-spacing: .11em;
-    text-transform: uppercase;
-    color: var(--muted);
+  .meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+    text-align: right;
   }
-  button.txt {
-    padding: 5px 13px;
+  .renews { color: var(--muted); font-size: .9375rem; font-variant-numeric: tabular-nums; }
+
+  select {
+    appearance: none;
+    padding: 4px 26px 4px 10px;
     border: 1px solid var(--hairline);
     border-radius: 7px;
     background: var(--surface-2);
     color: var(--muted);
     font: inherit;
     font-size: .8125rem;
-    cursor: pointer;
-    transition: color .15s, border-color .15s;
-  }
-  button.txt:hover { color: var(--ink); border-color: var(--accent-dim); }
-  button.txt:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  .editor input {
-    width: 5ch;
-    padding: 5px 8px;
-    border: 1px solid var(--accent-dim);
-    border-radius: 7px;
-    background: var(--surface);
-    color: var(--ink);
-    font: inherit;
-    font-size: .875rem;
     font-variant-numeric: tabular-nums;
+    cursor: pointer;
+    background-image:
+      linear-gradient(45deg, transparent 50%, currentColor 50%),
+      linear-gradient(135deg, currentColor 50%, transparent 50%);
+    background-position: right 12px center, right 7px center;
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
   }
-  .editor input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-  .editor input[aria-invalid="true"] { border-color: var(--accent); background: var(--tint); }
-  .hint { color: var(--faint); font-size: .75rem; }
+  select:hover { color: var(--ink); }
+  :is(select):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-  @media (max-width: 560px) {
-    .cal { grid-template-columns: auto 1fr auto; }
-    .month:last-of-type { display: none; }
-    .foot { flex-direction: column; align-items: stretch; gap: 16px; }
-    .meta { text-align: left; }
+  @media (max-width: 460px) {
+    .readout { flex-direction: column; align-items: stretch; gap: 16px; }
+    .meta { align-items: flex-start; text-align: left; }
+    .stat .n { font-size: 1.875rem; }
   }
 </style>
 
@@ -254,24 +192,14 @@
   </header>
 
   <div class="body">
-    <div class="cal">
-      <button class="nav" id="prev" type="button" aria-label="Previous cycle">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-             stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="m15 18-6-6 6-6" />
-        </svg>
-      </button>
-      <div class="month" id="monthA"></div>
-      <div class="month" id="monthB"></div>
-      <button class="nav" id="next" type="button" aria-label="Next cycle">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-             stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="m9 18 6-6-6-6" />
-        </svg>
-      </button>
+    <div class="track"><div class="fill" id="fill"></div></div>
+
+    <div class="scale">
+      <span id="scaleLeft">—</span>
+      <span id="scaleRight">—</span>
     </div>
 
-    <div class="foot">
+    <div class="readout">
       <div class="stats">
         <div class="stat is-lead">
           <span class="n" id="usedN">—</span>
@@ -283,22 +211,9 @@
         </div>
       </div>
       <div class="meta">
-        <div class="renews" id="renews">—</div>
-        <div class="range" id="range">—</div>
+        <span class="renews" id="renews">—</span>
+        <select id="picker" aria-label="Billing cycle"></select>
       </div>
-    </div>
-
-    <div class="controls">
-      <div class="actions" id="actions">
-        <button type="button" class="txt" id="editDay">Edit billing date</button>
-      </div>
-      <form class="editor" id="editor" hidden>
-        <label for="editorInput">Renews on day</label>
-        <input id="editorInput" type="text" inputmode="numeric" autocomplete="off" size="3" />
-        <button type="button" class="txt" id="editorSave">Save</button>
-        <button type="button" class="txt" id="editorCancel">Cancel</button>
-        <span class="hint">of each month</span>
-      </form>
     </div>
   </div>
 </div>
@@ -321,14 +236,10 @@
 
   // Day of the month the subscription renews on. If a month is too short
   // (February, say), it clamps to that month's last day.
-  const persistDay = (d) => {
-    try { localStorage.setItem(KEY, String(d)); } catch { /* blocked */ }
-  };
-
-  let anchorDay = (() => {
+  const ANCHOR_DAY = (() => {
     const fromUrl = parseInt(params.get('day'), 10);
     if (Number.isInteger(fromUrl) && fromUrl >= 1 && fromUrl <= 31) {
-      persistDay(fromUrl);
+      try { localStorage.setItem(KEY, String(fromUrl)); } catch { /* blocked */ }
       return fromUrl;
     }
     let stored = NaN;
@@ -342,146 +253,66 @@
   // Noon anchoring keeps day arithmetic immune to daylight-saving shifts.
   const noon = (y, m, d) => new Date(y, m, d, 12, 0, 0, 0);
   const lastDayOf = (y, m) => new Date(y, m + 1, 0).getDate();
-  const startOf = (y, m) => noon(y, m, Math.min(anchorDay, lastDayOf(y, m)));
+  const startOf = (y, m) => noon(y, m, Math.min(ANCHOR_DAY, lastDayOf(y, m)));
   const daysBetween = (a, b) => Math.round((b - a) / DAY);
 
-  const fmtMonth = new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' });
-  const fmtShort = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short' });
-  const fmtFull  = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
-  // Locale-correct weekday initials, starting Sunday.
-  const fmtDow = new Intl.DateTimeFormat(undefined, { weekday: 'short' });
-  const DOW = Array.from({ length: 7 }, (_, i) => fmtDow.format(new Date(2024, 8, 1 + i)));
+  const fmt = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short' });
+  const fmtFull = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
 
   // The cycle containing `date`, shifted by `offset` whole cycles.
   function cycle(date, offset = 0) {
     let y = date.getFullYear(), m = date.getMonth();
-    if (date < startOf(y, m)) m -= 1;          // still in last month's cycle
+    if (date < startOf(y, m)) m -= 1;         // still in last month's cycle
     m += offset;
     const start = startOf(y, m);
     const next = startOf(start.getFullYear(), start.getMonth() + 1);
     return {
       start,
+      next,
       // Renewal lands the day before the next cycle opens.
       renewal: new Date(next - DAY),
       total: daysBetween(start, next) - 1
     };
   }
 
-  function monthHtml(y, m, c, today) {
-    const lead = new Date(y, m, 1).getDay();   // blanks before the 1st
-    const count = lastDayOf(y, m);
-
-    let cells = '';
-    for (let i = 0; i < lead; i++) cells += '<div></div>';
-
-    for (let d = 1; d <= count; d++) {
-      const date = noon(y, m, d);
-      const cls = ['day'];
-      if (date >= c.start && date <= c.renewal) {
-        cls.push(date <= today ? 'used' : 'in');
-      }
-      if (date.getTime() === today.getTime()) cls.push('today');
-      cells += `<div class="${cls.join(' ')}">${d}</div>`;
-    }
-
-    const dow = DOW.map((n, i) =>
-      `<div class="dow${i === 0 || i === 6 ? ' end' : ''}">${n.slice(0, 2)}</div>`
-    ).join('');
-
-    return `<p class="month-name">${fmtMonth.format(new Date(y, m, 1))}</p>
-            <div class="grid">${dow}${cells}</div>`;
-  }
-
-  let offset = 0;
+  const picker = document.getElementById('picker');
+  const OFFSETS = [-3, -2, -1, 0, 1, 2];
 
   function render() {
     const now = new Date();
     const today = noon(now.getFullYear(), now.getMonth(), now.getDate());
-    const c = cycle(today, offset);
-
-    // Always show the cycle's opening month and the one after it — together
-    // they cover any cycle, which spans at most two months.
-    const a = c.start;
-    document.getElementById('monthA').innerHTML =
-      monthHtml(a.getFullYear(), a.getMonth(), c, today);
-    document.getElementById('monthB').innerHTML =
-      monthHtml(a.getFullYear(), a.getMonth() + 1, c, today);
+    const c = cycle(today, Number(picker.value));
 
     const elapsed = daysBetween(c.start, today);
     const used = Math.max(0, Math.min(elapsed, c.total));
     const left = c.total - used;
+    const pct = c.total > 0 ? (used / c.total) * 100 : 0;
 
+    document.getElementById('fill').style.width = pct.toFixed(2) + '%';
     document.getElementById('usedN').textContent = used + 'd';
     document.getElementById('leftN').textContent = left + 'd';
+    document.getElementById('scaleLeft').textContent = `Day ${used} of ${c.total}`;
+    document.getElementById('scaleRight').textContent =
+      left === 0 ? 'Renews today' : `${left} day${left === 1 ? '' : 's'} left`;
     document.getElementById('renews').textContent = 'Renews ' + fmtFull.format(c.renewal);
-    document.getElementById('range').textContent =
-      `${fmtShort.format(c.start)} – ${fmtShort.format(c.renewal)} · ${c.total} days`;
 
     const badge = document.getElementById('badge');
-    if (elapsed < 0)            { badge.textContent = 'Upcoming'; badge.dataset.state = ''; }
-    else if (elapsed > c.total) { badge.textContent = 'Complete'; badge.dataset.state = ''; }
+    if (elapsed < 0)            { badge.textContent = 'Upcoming';  badge.dataset.state = ''; }
+    else if (elapsed > c.total) { badge.textContent = 'Complete';  badge.dataset.state = ''; }
     else                        { badge.textContent = left + 'd left'; badge.dataset.state = left <= 3 ? 'urgent' : ''; }
-
-    document.getElementById('prev').disabled = offset <= -12;
-    document.getElementById('next').disabled = offset >= 12;
   }
 
-  document.getElementById('prev').addEventListener('click', () => { offset--; render(); });
-  document.getElementById('next').addEventListener('click', () => { offset++; render(); });
-
-  // ── Editing the renewal day ───────────────────────────────────────────
-  // Inline rather than prompt(): Notion renders embeds in a sandboxed iframe,
-  // where prompt() and alert() are blocked outright.
-  const actions = document.getElementById('actions');
-  const editor = document.getElementById('editor');
-  const editorInput = document.getElementById('editorInput');
-  let editing = false;
-
-  function openEditor() {
-    editing = true;
-    editorInput.value = String(anchorDay);
-    editorInput.removeAttribute('aria-invalid');
-    actions.hidden = true;
-    editor.hidden = false;
-    editorInput.focus();
-    editorInput.select();
-  }
-
-  function closeEditor() {
-    editing = false;
-    editor.hidden = true;
-    actions.hidden = false;
-  }
-
-  function commit() {
-    if (!editing) return;
-    const v = parseInt(editorInput.value.replace(/[^0-9]/g, ''), 10);
-    if (!Number.isInteger(v) || v < 1 || v > 31) {
-      editorInput.setAttribute('aria-invalid', 'true');
-      editorInput.focus();
-      editorInput.select();
-      return;
-    }
-    anchorDay = v;
-    persistDay(v);
-    offset = 0;               // a new anchor means a different current cycle
-    closeEditor();
-    render();
-  }
-
-  // Save is a plain button wired directly rather than a submit button: the
-  // commit path shouldn't depend on native form submission firing.
-  document.getElementById('editDay').addEventListener('click', openEditor);
-  document.getElementById('editorSave').addEventListener('click', commit);
-  document.getElementById('editorCancel').addEventListener('click', closeEditor);
-  editor.addEventListener('submit', (e) => { e.preventDefault(); commit(); });
-  editorInput.addEventListener('input', () => editorInput.removeAttribute('aria-invalid'));
-  editorInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter')  { e.preventDefault(); commit(); }
-    if (e.key === 'Escape') { e.preventDefault(); closeEditor(); }
-  });
-
+  // Build the cycle picker once, then render.
+  const base = new Date();
+  const baseNoon = noon(base.getFullYear(), base.getMonth(), base.getDate());
+  picker.innerHTML = OFFSETS.map(o => {
+    const c = cycle(baseNoon, o);
+    return `<option value="${o}"${o === 0 ? ' selected' : ''}>` +
+           `${fmt.format(c.start)} – ${fmt.format(c.renewal)}</option>`;
+  }).join('');
+  picker.addEventListener('change', render);
   render();
+
   // Keep the tile honest if the embed is left open across midnight.
   setInterval(render, 60000);
 </script>
