@@ -42,6 +42,16 @@
     --accent-dim: #a85a4b; --track: #2d323e; --shadow: none;
   }
 
+  /* Triple-click background modes. These must come after the theme rules —
+     same specificity, so source order decides. Both force the dark palette,
+     since a light palette on a near-black ground is unreadable. */
+  :root[data-bg="solid"] { --surface: #161616; --surface-2: #161616; }
+  :root[data-bg="clear"] { --surface: transparent; --surface-2: transparent; }
+  :root[data-bg] .badge { background: transparent; }
+  /* Solid mode fills the whole embed, not just the card, so the block reads
+     as one dark panel rather than a card floating on Notion's background. */
+  :root[data-bg="solid"] body { background: #161616; }
+
   /* Transparent page so the tile sits on Notion's own background. */
   body {
     margin: 0;
@@ -312,6 +322,46 @@
   }).join('');
   picker.addEventListener('change', render);
   render();
+
+  // ── Triple-click to cycle the background ──────────────────────────────
+  // Theme default → solid #161616 → transparent → back. Both non-default
+  // modes force the dark palette, since light text tokens on a near-black
+  // ground would be unreadable.
+  const BG_KEY = KEY + ':bg';
+  const BG_MODES = ['', 'solid', 'clear'];
+  const baseTheme = document.documentElement.dataset.theme || '';
+
+  let bgMode = '';
+  try { bgMode = localStorage.getItem(BG_KEY) || ''; } catch { /* blocked */ }
+  if (!BG_MODES.includes(bgMode)) bgMode = '';
+
+  function applyBg() {
+    const root = document.documentElement;
+    if (bgMode) {
+      root.dataset.bg = bgMode;
+      // Solid lays down its own near-black ground, so it pins the dark
+      // palette. Transparent shows whatever is behind it, so it must keep
+      // following the viewer's theme or the text can land on its own colour.
+      if (bgMode === 'solid') root.dataset.theme = 'dark';
+      else if (baseTheme) root.dataset.theme = baseTheme;
+      else delete root.dataset.theme;
+    } else {
+      delete root.dataset.bg;
+      if (baseTheme) root.dataset.theme = baseTheme;
+      else delete root.dataset.theme;
+    }
+  }
+  applyBg();
+
+  document.addEventListener('click', (e) => {
+    if (e.detail !== 3) return;                             // triple-click only
+    if (e.target.closest('input, select, button')) return;  // leave controls alone
+    bgMode = BG_MODES[(BG_MODES.indexOf(bgMode) + 1) % BG_MODES.length];
+    try { localStorage.setItem(BG_KEY, bgMode); } catch { /* blocked */ }
+    applyBg();
+    // Drop the text selection the triple-click just made.
+    window.getSelection()?.removeAllRanges();
+  });
 
   // Keep the tile honest if the embed is left open across midnight.
   setInterval(render, 60000);
