@@ -220,15 +220,34 @@
 
 <script>
   // ── Config ────────────────────────────────────────────────────────────
-  // Day of the month your Claude Pro subscription renews on. If a month is
-  // too short (e.g. February), it clamps to that month's last day.
-  const ANCHOR_DAY = 30;
+  // Fallback renewal day, used when nothing else is set. Set your real one
+  // per-embed with ?day=30 in the URL — that keeps your billing date in your
+  // own Notion page rather than in this repo. Once seen, it's remembered.
+  const DEFAULT_ANCHOR_DAY = 1;
+
+  const params = new URLSearchParams(location.search);
+  const KEY = 'claude-billing-cycle-tile';
 
   // ── Theme override: append ?theme=dark or ?theme=light to the embed URL.
-  const themeParam = new URLSearchParams(location.search).get('theme');
+  const themeParam = params.get('theme');
   if (themeParam === 'dark' || themeParam === 'light') {
     document.documentElement.dataset.theme = themeParam;
   }
+
+  // Day of the month the subscription renews on. If a month is too short
+  // (February, say), it clamps to that month's last day.
+  const ANCHOR_DAY = (() => {
+    const fromUrl = parseInt(params.get('day'), 10);
+    if (Number.isInteger(fromUrl) && fromUrl >= 1 && fromUrl <= 31) {
+      try { localStorage.setItem(KEY, String(fromUrl)); } catch { /* blocked */ }
+      return fromUrl;
+    }
+    let stored = NaN;
+    try { stored = parseInt(localStorage.getItem(KEY), 10); } catch { /* blocked */ }
+    return Number.isInteger(stored) && stored >= 1 && stored <= 31
+      ? stored
+      : DEFAULT_ANCHOR_DAY;
+  })();
 
   const DAY = 86400000;
   // Noon anchoring keeps day arithmetic immune to daylight-saving shifts.

@@ -24,18 +24,30 @@ append a query parameter to the embed URL:
 
 ## Configuration
 
-One value, near the top of the `<script>` block in `index.html`:
+The one value that matters is the day of the month your subscription renews
+on. Set it in the embed URL:
 
-```js
-const ANCHOR_DAY = 30;
+```
+https://<user>.github.io/claude-billing-cycle-tile/?day=30
 ```
 
-That's the day of the month your subscription renews on. Months too short to
-contain it (February, for instance) clamp to their last day.
+Keeping it in the URL means your actual billing date lives in your own Notion
+page rather than in this public repo. The value is remembered in
+`localStorage` once seen, and falls back to the 1st if nothing is set. Months
+too short to contain the day (February, for instance) clamp to their last day.
+
+To bake in a default instead, edit `DEFAULT_ANCHOR_DAY` near the top of the
+`<script>` block in `index.html`.
 
 Everything else is derived: the cycle runs from the anchor day to the day
 before the next anchor day, and the picker in the corner lets you look at the
 three previous and two upcoming cycles.
+
+Parameters combine, so a fully specified embed looks like:
+
+```
+?day=30&theme=dark
+```
 
 ## Notes on accuracy
 
