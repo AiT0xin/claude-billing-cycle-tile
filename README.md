@@ -12,7 +12,11 @@ browser from one config value, so it stays correct on its own.
 1. Enable GitHub Pages for this repo: **Settings → Pages → Source: `main` / root**.
 2. Copy the published URL, e.g. `https://<user>.github.io/claude-billing-cycle-tile/`
 3. In Notion, type `/embed`, paste the URL, and drag the block to about
-   120px tall.
+   **460px** tall.
+
+The tile itself is only ~120px, but the date picker opens downwards and
+Notion's iframe clips anything past the block's edge. The page background is
+transparent, so the extra room below is invisible until the picker is open.
 
 ### Theme
 
@@ -45,9 +49,19 @@ too short to contain the day (February, for instance) clamp to their last day.
 To bake in a default instead, edit `DEFAULT_ANCHOR_DAY` near the top of the
 `<script>` block in `index.html`.
 
+You can also set it from the tile: click the date range in the corner to open
+a two-month calendar and pick any date. The day-of-month you click becomes the
+renewal day, and the current cycle is highlighted so you can see what you are
+choosing.
+
+**The URL wins over the picker.** If `?day=` is present it is re-applied on
+every load, so a date chosen in the calendar won't survive a refresh. Pick one:
+put `?day=` in the embed URL, *or* leave it off and use the picker. In Notion
+the URL is the reliable choice — embeds render in a sandboxed iframe where
+`localStorage` is often unavailable.
+
 Everything else is derived: the cycle runs from the anchor day to the day
-before the next anchor day, and the picker in the corner lets you look at the
-three previous and two upcoming cycles.
+before the next anchor day.
 
 Parameters combine, so a fully specified embed looks like:
 

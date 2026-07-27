@@ -12,10 +12,13 @@
     --hairline:   #ebe3e0;
     --ink:        #21252c;
     --muted:      #7d736e;
+    --faint:      #c4bab5;
     --accent:     #ce5138;
     --accent-dim: #e08a76;
+    --on-accent:  #ffffff;
     --track:      #f0e7e4;
     --shadow:     0 1px 2px rgba(60, 36, 30, .06), 0 8px 24px -12px rgba(60, 36, 30, .16);
+    --pop-shadow: 0 4px 12px rgba(60, 36, 30, .10), 0 18px 40px -16px rgba(60, 36, 30, .30);
   }
   @media (prefers-color-scheme: dark) {
     :root {
@@ -24,33 +27,41 @@
       --hairline:   #2b303b;
       --ink:        #eceef2;
       --muted:      #7b8391;
+      --faint:      #4a5160;
       --accent:     #ef806b;
       --accent-dim: #a85a4b;
+      --on-accent:  #1b1f28;
       --track:      #2d323e;
       --shadow:     none;
+      --pop-shadow: 0 18px 44px -12px rgba(0, 0, 0, .7);
     }
   }
   :root[data-theme="light"] {
     --surface: #ffffff; --surface-2: #faf7f6; --hairline: #ebe3e0;
-    --ink: #21252c; --muted: #7d736e; --accent: #ce5138;
-    --accent-dim: #e08a76; --track: #f0e7e4;
+    --ink: #21252c; --muted: #7d736e; --faint: #c4bab5;
+    --accent: #ce5138; --accent-dim: #e08a76; --on-accent: #ffffff; --track: #f0e7e4;
     --shadow: 0 1px 2px rgba(60,36,30,.06), 0 8px 24px -12px rgba(60,36,30,.16);
+    --pop-shadow: 0 4px 12px rgba(60,36,30,.10), 0 18px 40px -16px rgba(60,36,30,.30);
   }
   :root[data-theme="dark"] {
     --surface: #1b1f28; --surface-2: #20252f; --hairline: #2b303b;
-    --ink: #eceef2; --muted: #7b8391; --accent: #ef806b;
-    --accent-dim: #a85a4b; --track: #2d323e; --shadow: none;
+    --ink: #eceef2; --muted: #7b8391; --faint: #4a5160;
+    --accent: #ef806b; --accent-dim: #a85a4b; --on-accent: #1b1f28; --track: #2d323e;
+    --shadow: none; --pop-shadow: 0 18px 44px -12px rgba(0, 0, 0, .7);
   }
 
   /* Triple-click background modes. These must come after the theme rules —
-     same specificity, so source order decides. Both force the dark palette,
-     since a light palette on a near-black ground is unreadable. */
-  :root[data-bg="solid"] { --surface: #161616; --surface-2: #161616; }
+     same specificity, so source order decides. */
+  :root[data-bg="solid"] { --surface: #161616; --surface-2: #161616; --on-accent: #161616; }
   :root[data-bg="clear"] { --surface: transparent; --surface-2: transparent; }
   :root[data-bg] .badge { background: transparent; }
   /* Solid mode fills the whole embed, not just the card, so the block reads
      as one dark panel rather than a card floating on Notion's background. */
   :root[data-bg="solid"] body { background: #161616; }
+  /* The popover always needs an opaque ground of its own, or the calendar
+     renders on top of whatever is behind the tile. */
+  :root[data-bg="clear"] .pop { background: #1b1f28; }
+  :root[data-bg="clear"][data-scheme="light"] .pop { background: #ffffff; }
 
   /* Transparent page so the tile sits on Notion's own background. */
   body {
@@ -70,7 +81,8 @@
     border-top: 2px solid var(--accent);
     border-radius: 12px;
     box-shadow: var(--shadow);
-    overflow: hidden;
+    /* Not `overflow: hidden` — that would clip the calendar popover. The
+       header rounds its own top corners instead. */
   }
 
   /* ── Header ── */
@@ -81,6 +93,7 @@
     padding: 16px 20px;
     border-bottom: 1px solid var(--hairline);
     background: var(--surface-2);
+    border-radius: 11px 11px 0 0;
   }
   .bolt { flex: none; color: var(--accent); display: block; }
   .title {
@@ -121,7 +134,10 @@
     background: var(--accent);
     transition: width .7s cubic-bezier(.22, 1, .36, 1);
   }
-  @media (prefers-reduced-motion: reduce) { .fill { transition: none; } }
+  @media (prefers-reduced-motion: reduce) {
+    .fill { transition: none; }
+    .pop { animation: none !important; }
+  }
 
   .scale {
     display: flex;
@@ -164,9 +180,13 @@
   }
   .renews { color: var(--muted); font-size: .9375rem; font-variant-numeric: tabular-nums; }
 
-  select {
-    appearance: none;
-    padding: 4px 26px 4px 10px;
+  /* ── Trigger ── */
+  .picker { position: relative; }
+  .trigger {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 10px;
     border: 1px solid var(--hairline);
     border-radius: 7px;
     background: var(--surface-2);
@@ -175,20 +195,117 @@
     font-size: .8125rem;
     font-variant-numeric: tabular-nums;
     cursor: pointer;
-    background-image:
-      linear-gradient(45deg, transparent 50%, currentColor 50%),
-      linear-gradient(135deg, currentColor 50%, transparent 50%);
-    background-position: right 12px center, right 7px center;
-    background-size: 5px 5px, 5px 5px;
-    background-repeat: no-repeat;
+    transition: color .15s, border-color .15s;
   }
-  select:hover { color: var(--ink); }
-  :is(select):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .trigger:hover { color: var(--ink); border-color: var(--accent-dim); }
+  .trigger[aria-expanded="true"] { color: var(--ink); border-color: var(--accent); }
+  .trigger:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .trigger .chev { flex: none; transition: transform .18s ease; }
+  .trigger[aria-expanded="true"] .chev { transform: rotate(180deg); }
 
+  /* ── Calendar popover ── */
+  .pop {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 20;
+    padding: 16px;
+    border: 1px solid var(--hairline);
+    border-radius: 12px;
+    background: var(--surface);
+    box-shadow: var(--pop-shadow);
+    text-align: left;
+    animation: popin .16s cubic-bezier(.22, 1, .36, 1);
+  }
+  .pop[hidden] { display: none; }
+  @keyframes popin {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  .pop-head {
+    display: grid;
+    grid-template-columns: auto 1fr 1fr auto;
+    align-items: center;
+    gap: 0 20px;
+    margin-bottom: 12px;
+  }
+  .nav {
+    width: 28px;
+    height: 28px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: background-color .15s, color .15s;
+  }
+  .nav:hover { background: var(--surface-2); color: var(--ink); }
+  .nav:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .mname {
+    text-align: center;
+    font-size: .9375rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .pop-body { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .grid { display: grid; grid-template-columns: repeat(7, 30px); gap: 2px; }
+  .dow {
+    height: 26px;
+    display: grid;
+    place-items: center;
+    font-size: .625rem;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .dow.end { color: var(--accent-dim); }
+
+  .d {
+    width: 30px;
+    height: 30px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--ink);
+    font: inherit;
+    font-size: .8125rem;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+  }
+  .d.past { color: var(--faint); }
+  .d:hover { background: var(--track); }
+  /* Days in the cycle this renewal day produces. */
+  .d.in { background: var(--accent); color: var(--on-accent); font-weight: 700; }
+  .d.in:hover { background: var(--accent); }
+  .d.today { box-shadow: inset 0 0 0 1.5px var(--accent); }
+  .d:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  .pop-note {
+    margin: 12px 0 0;
+    padding-top: 10px;
+    border-top: 1px solid var(--hairline);
+    color: var(--muted);
+    font-size: .75rem;
+  }
+
+  @media (max-width: 620px) {
+    .pop-head { grid-template-columns: auto 1fr auto; }
+    .pop-body { grid-template-columns: 1fr; }
+    .mname.second, .cal.second { display: none; }
+  }
   @media (max-width: 460px) {
     .readout { flex-direction: column; align-items: stretch; gap: 16px; }
     .meta { align-items: flex-start; text-align: left; }
     .stat .n { font-size: 1.875rem; }
+    .pop { right: auto; left: 0; }
   }
 </style>
 
@@ -220,9 +337,40 @@
           <span class="k">Days left</span>
         </div>
       </div>
+
       <div class="meta">
         <span class="renews" id="renews">—</span>
-        <select id="picker" aria-label="Billing cycle"></select>
+        <div class="picker">
+          <button class="trigger" id="trigger" type="button"
+                  aria-haspopup="dialog" aria-expanded="false" aria-controls="pop">
+            <span id="triggerLabel">—</span>
+            <svg class="chev" width="10" height="10" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="3" stroke-linecap="round"
+                 stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+          </button>
+
+          <div class="pop" id="pop" hidden role="dialog" aria-label="Choose your renewal date">
+            <div class="pop-head">
+              <button class="nav" id="calPrev" type="button" aria-label="Previous month">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                     aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
+              </button>
+              <div class="mname" id="mnameA"></div>
+              <div class="mname second" id="mnameB"></div>
+              <button class="nav" id="calNext" type="button" aria-label="Next month">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                     aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+              </button>
+            </div>
+            <div class="pop-body">
+              <div class="cal" id="calA"></div>
+              <div class="cal second" id="calB"></div>
+            </div>
+            <p class="pop-note" id="popNote"></p>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -244,12 +392,16 @@
     document.documentElement.dataset.theme = themeParam;
   }
 
+  const persistDay = (d) => {
+    try { localStorage.setItem(KEY, String(d)); } catch { /* blocked */ }
+  };
+
   // Day of the month the subscription renews on. If a month is too short
   // (February, say), it clamps to that month's last day.
-  const ANCHOR_DAY = (() => {
+  let anchorDay = (() => {
     const fromUrl = parseInt(params.get('day'), 10);
     if (Number.isInteger(fromUrl) && fromUrl >= 1 && fromUrl <= 31) {
-      try { localStorage.setItem(KEY, String(fromUrl)); } catch { /* blocked */ }
+      persistDay(fromUrl);
       return fromUrl;
     }
     let stored = NaN;
@@ -263,17 +415,20 @@
   // Noon anchoring keeps day arithmetic immune to daylight-saving shifts.
   const noon = (y, m, d) => new Date(y, m, d, 12, 0, 0, 0);
   const lastDayOf = (y, m) => new Date(y, m + 1, 0).getDate();
-  const startOf = (y, m) => noon(y, m, Math.min(ANCHOR_DAY, lastDayOf(y, m)));
+  const startOf = (y, m) => noon(y, m, Math.min(anchorDay, lastDayOf(y, m)));
   const daysBetween = (a, b) => Math.round((b - a) / DAY);
 
-  const fmt = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short' });
-  const fmtFull = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+  const fmt      = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short' });
+  const fmtFull  = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+  const fmtMonth = new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' });
+  // Locale-correct weekday initials, starting Sunday.
+  const fmtDow = new Intl.DateTimeFormat(undefined, { weekday: 'short' });
+  const DOW = Array.from({ length: 7 }, (_, i) => fmtDow.format(new Date(2024, 8, 1 + i)));
 
-  // The cycle containing `date`, shifted by `offset` whole cycles.
-  function cycle(date, offset = 0) {
+  // The cycle containing `date`.
+  function cycle(date) {
     let y = date.getFullYear(), m = date.getMonth();
     if (date < startOf(y, m)) m -= 1;         // still in last month's cycle
-    m += offset;
     const start = startOf(y, m);
     const next = startOf(start.getFullYear(), start.getMonth() + 1);
     return {
@@ -285,13 +440,102 @@
     };
   }
 
-  const picker = document.getElementById('picker');
-  const OFFSETS = [-3, -2, -1, 0, 1, 2];
+  const todayNoon = () => {
+    const n = new Date();
+    return noon(n.getFullYear(), n.getMonth(), n.getDate());
+  };
 
+  // ── Calendar popover ──────────────────────────────────────────────────
+  const trigger = document.getElementById('trigger');
+  const pop = document.getElementById('pop');
+  let viewY, viewM;   // left-hand month currently shown
+
+  function monthGrid(y, m, c, today) {
+    const lead = new Date(y, m, 1).getDay();
+    const count = lastDayOf(y, m);
+
+    let cells = DOW.map((n, i) =>
+      `<div class="dow${i === 0 || i === 6 ? ' end' : ''}">${n.slice(0, 2)}</div>`
+    ).join('');
+
+    for (let i = 0; i < lead; i++) cells += '<div></div>';
+
+    for (let d = 1; d <= count; d++) {
+      const date = noon(y, m, d);
+      const cls = ['d'];
+      if (date >= c.start && date <= c.renewal) cls.push('in');
+      else if (date < today) cls.push('past');
+      if (date.getTime() === today.getTime()) cls.push('today');
+      cells += `<button type="button" class="${cls.join(' ')}" data-day="${d}" ` +
+               `aria-label="Set renewal to day ${d}">${d}</button>`;
+    }
+    return `<div class="grid">${cells}</div>`;
+  }
+
+  function renderCal() {
+    const today = todayNoon();
+    const c = cycle(today);
+    const bY = viewM === 11 ? viewY + 1 : viewY;
+    const bM = (viewM + 1) % 12;
+
+    document.getElementById('mnameA').textContent = fmtMonth.format(new Date(viewY, viewM, 1));
+    document.getElementById('mnameB').textContent = fmtMonth.format(new Date(bY, bM, 1));
+    document.getElementById('calA').innerHTML = monthGrid(viewY, viewM, c, today);
+    document.getElementById('calB').innerHTML = monthGrid(bY, bM, c, today);
+    document.getElementById('popNote').textContent =
+      `Renews on day ${anchorDay} of each month · pick any date to change it`;
+  }
+
+  function openPop() {
+    const c = cycle(todayNoon());
+    viewY = c.start.getFullYear();
+    viewM = c.start.getMonth();
+    renderCal();
+    pop.hidden = false;
+    trigger.setAttribute('aria-expanded', 'true');
+  }
+
+  function closePop() {
+    pop.hidden = true;
+    trigger.setAttribute('aria-expanded', 'false');
+  }
+
+  trigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    pop.hidden ? openPop() : closePop();
+  });
+
+  document.getElementById('calPrev').addEventListener('click', () => {
+    if (--viewM < 0) { viewM = 11; viewY--; }
+    renderCal();
+  });
+  document.getElementById('calNext').addEventListener('click', () => {
+    if (++viewM > 11) { viewM = 0; viewY++; }
+    renderCal();
+  });
+
+  // Picking any date sets the renewal day to that day of the month.
+  pop.addEventListener('click', (e) => {
+    const cell = e.target.closest('.d');
+    if (!cell) return;
+    anchorDay = Number(cell.dataset.day);
+    persistDay(anchorDay);
+    render();
+    renderCal();
+    closePop();
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!pop.hidden && !e.target.closest('.picker')) closePop();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !pop.hidden) { closePop(); trigger.focus(); }
+  });
+
+  // ── Render ────────────────────────────────────────────────────────────
   function render() {
-    const now = new Date();
-    const today = noon(now.getFullYear(), now.getMonth(), now.getDate());
-    const c = cycle(today, Number(picker.value));
+    const today = todayNoon();
+    const c = cycle(today);
 
     const elapsed = daysBetween(c.start, today);
     const used = Math.max(0, Math.min(elapsed, c.total));
@@ -305,28 +549,18 @@
     document.getElementById('scaleRight').textContent =
       left === 0 ? 'Renews today' : `${left} day${left === 1 ? '' : 's'} left`;
     document.getElementById('renews').textContent = 'Renews ' + fmtFull.format(c.renewal);
+    document.getElementById('triggerLabel').textContent =
+      `${fmt.format(c.start)} – ${fmt.format(c.renewal)}`;
 
     const badge = document.getElementById('badge');
-    if (elapsed < 0)            { badge.textContent = 'Upcoming';  badge.dataset.state = ''; }
-    else if (elapsed > c.total) { badge.textContent = 'Complete';  badge.dataset.state = ''; }
-    else                        { badge.textContent = left + 'd left'; badge.dataset.state = left <= 3 ? 'urgent' : ''; }
+    badge.textContent = left + 'd left';
+    badge.dataset.state = left <= 3 ? 'urgent' : '';
   }
 
-  // Build the cycle picker once, then render.
-  const base = new Date();
-  const baseNoon = noon(base.getFullYear(), base.getMonth(), base.getDate());
-  picker.innerHTML = OFFSETS.map(o => {
-    const c = cycle(baseNoon, o);
-    return `<option value="${o}"${o === 0 ? ' selected' : ''}>` +
-           `${fmt.format(c.start)} – ${fmt.format(c.renewal)}</option>`;
-  }).join('');
-  picker.addEventListener('change', render);
   render();
 
   // ── Triple-click to cycle the background ──────────────────────────────
-  // Theme default → solid #161616 → transparent → back. Both non-default
-  // modes force the dark palette, since light text tokens on a near-black
-  // ground would be unreadable.
+  // Theme default → solid #161616 → transparent → back.
   const BG_KEY = KEY + ':bg';
   const BG_MODES = ['', 'solid', 'clear'];
   const baseTheme = document.documentElement.dataset.theme || '';
@@ -350,12 +584,17 @@
       if (baseTheme) root.dataset.theme = baseTheme;
       else delete root.dataset.theme;
     }
+    // The popover needs an opaque ground even in transparent mode, so it has
+    // to know which way the ambient scheme is leaning.
+    root.dataset.scheme = (root.dataset.theme === 'dark') ? 'dark'
+      : (root.dataset.theme === 'light') ? 'light'
+      : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
   }
   applyBg();
 
   document.addEventListener('click', (e) => {
     if (e.detail !== 3) return;                             // triple-click only
-    if (e.target.closest('input, select, button')) return;  // leave controls alone
+    if (e.target.closest('input, select, button, .pop')) return;
     bgMode = BG_MODES[(BG_MODES.indexOf(bgMode) + 1) % BG_MODES.length];
     try { localStorage.setItem(BG_KEY, bgMode); } catch { /* blocked */ }
     applyBg();
