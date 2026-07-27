@@ -518,7 +518,10 @@
     return pickStart <= end ? [pickStart, end] : [end, pickStart];
   }
 
-  function monthGrid(y, m, today, committed, preview) {
+  // `data-committed` records whether a cell falls in the saved cycle,
+  // independent of whatever 'pick'/'pick-start' classes get toggled on top
+  // of it while a range is being previewed — see applyPreview().
+  function monthGrid(y, m, today, committed) {
     const lead = new Date(y, m, 1).getDay();
     const count = lastDayOf(y, m);
 
@@ -530,19 +533,31 @@
 
     for (let d = 1; d <= count; d++) {
       const date = noon(y, m, d);
+      const inCycle = date >= committed.start && date <= committed.renewal;
       const cls = ['d'];
-      if (preview) {
-        if (date >= preview[0] && date <= preview[1]) cls.push('pick');
-        if (pickStart && date.getTime() === pickStart.getTime()) cls.push('pick-start');
-      } else if (date >= committed.start && date <= committed.renewal) {
-        cls.push('in');
-      }
+      if (inCycle) cls.push('in');
       if (date < today) cls.push('past');
       if (date.getTime() === today.getTime()) cls.push('today');
       cells += `<button type="button" class="${cls.join(' ')}" data-iso="${isoOf(date)}" ` +
-               `aria-label="${fmtFull.format(date)}">${d}</button>`;
+               `data-committed="${inCycle ? '1' : '0'}" aria-label="${fmtFull.format(date)}">${d}</button>`;
     }
     return `<div class="grid">${cells}</div>`;
+  }
+
+  // Toggles pick/pick-start/in classes on the cells already in the DOM.
+  // Deliberately never touches innerHTML: doing that mid-gesture (this runs
+  // on every mouseover while picking) can detach the very button the user's
+  // mouse is over between mousedown and mouseup, which silently drops the
+  // click — the bug behind "clicking doesn't select anything."
+  function applyPreview(preview) {
+    pop.querySelectorAll('.d[data-iso]').forEach((cell) => {
+      const date = parseISODate(cell.dataset.iso);
+      if (!date) return;
+      const inPreview = !!preview && date >= preview[0] && date <= preview[1];
+      cell.classList.toggle('pick', inPreview);
+      cell.classList.toggle('pick-start', !!pickStart && date.getTime() === pickStart.getTime());
+      cell.classList.toggle('in', !preview && cell.dataset.committed === '1');
+    });
   }
 
   function updateNote(committed, preview) {
@@ -565,17 +580,21 @@
     }
   }
 
+  // Full rebuild — only called for discrete actions (open, month nav,
+  // commit), never while a hover gesture might be mid-flight. See
+  // applyPreview() for the hover-safe path.
   function renderCal() {
     const today = todayNoon();
     const committed = cycle(today);
-    const preview = pickRange();
     const bY = viewM === 11 ? viewY + 1 : viewY;
     const bM = (viewM + 1) % 12;
 
     document.getElementById('mnameA').textContent = fmtMonth.format(new Date(viewY, viewM, 1));
     document.getElementById('mnameB').textContent = fmtMonth.format(new Date(bY, bM, 1));
-    document.getElementById('calA').innerHTML = monthGrid(viewY, viewM, today, committed, preview);
-    document.getElementById('calB').innerHTML = monthGrid(bY, bM, today, committed, preview);
+    document.getElementById('calA').innerHTML = monthGrid(viewY, viewM, today, committed);
+    document.getElementById('calB').innerHTML = monthGrid(bY, bM, today, committed);
+    const preview = pickRange();
+    applyPreview(preview);
     updateNote(committed, preview);
   }
 
@@ -626,7 +645,11 @@
     if (!pickStart) {
       pickStart = date;
       hoverEnd = date;
-      renderCal();
+      // Class-toggle only here too — see applyPreview()'s comment for why
+      // this can't be a full renderCal() rebuild.
+      const preview = pickRange();
+      applyPreview(preview);
+      updateNote(cycle(todayNoon()), preview);
       return;
     }
 
@@ -652,7 +675,12 @@
     const date = parseISODate(cell.dataset.iso);
     if (!date || (hoverEnd && date.getTime() === hoverEnd.getTime())) return;
     hoverEnd = date;
-    renderCal();
+    // Never renderCal() here: rebuilding the grid on every hover can detach
+    // the cell under the mouse mid-gesture and silently swallow the next
+    // click. applyPreview() only toggles classes on existing nodes.
+    const preview = pickRange();
+    applyPreview(preview);
+    updateNote(cycle(todayNoon()), preview);
   });
 
   document.addEventListener('click', (e) => {
