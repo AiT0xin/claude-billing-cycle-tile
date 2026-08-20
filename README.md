@@ -7,7 +7,7 @@ dropped into a Notion page.
 Nothing is fetched and nothing is tracked. The tile computes the cycle in your
 browser from one config value, so it stays correct on its own.
 
-<img width="688" height="207" alt="Screenshot 2026-08-21 at 1 04 58 am" src="https://github.com/user-attachments/assets/e9a21f8d-6ee5-440e-b34c-3516f1c6a616" />
+<img width="688" height="207" alt="Claude Billing Cycle Tile" src="https://github.com/user-attachments/assets/e9a21f8d-6ee5-440e-b34c-3516f1c6a616" />
 
 ## Embed in Notion
 
