@@ -1,7 +1,7 @@
 # Claude Pro Billing Cycle tile
 
 A single-file, embeddable tile that shows where you are in your Claude Pro
-billing cycle — days used, days left, and the renewal date. Designed to be
+billing cycle - days used, days left, and the renewal date. Designed to be
 dropped into a Notion page.
 
 Nothing is fetched and nothing is tracked. The tile computes the cycle in your
@@ -30,15 +30,15 @@ append a query parameter to the embed URL:
 → transparent → back. Solid pins the dark palette and fills the whole embed;
 transparent keeps following the viewer's theme, so it stays readable on a
 light or dark page. The choice is saved in `localStorage`, which Notion's
-sandboxed iframe may not persist — reach for `?theme=` when it must stick.
+sandboxed iframe may not persist - reach for `?theme=` when it must stick.
 
 ## Configuration
 
 There are two cycle shapes:
 
-- **Same day every month** — the classic monthly subscription. Length varies
+- **Same day every month** - the classic monthly subscription. Length varies
   28–31 days as the calendar does.
-- **Custom range** — the exact start and end dates you pick, shown literally.
+- **Custom range** - the exact start and end dates you pick, shown literally.
   It does not repeat: the tile displays the period you chose, and reports
   "Upcoming" or "Ended" if today falls outside it.
 
@@ -46,10 +46,10 @@ There are two cycle shapes:
 
 Click the date range in the corner to open a two-month calendar.
 
-- **Click one date, then a different date** — sets a custom cycle running
+- **Click one date, then a different date** - sets a custom cycle running
   between them (inclusive), previewed live as you hover the second date
   before you commit.
-- **Click one date, then click it again** — sets the simple "renews on this
+- **Click one date, then click it again** - sets the simple "renews on this
   day every month" cycle. This is the fast path if you don't need a custom
   length: one date, clicked twice.
 
@@ -68,7 +68,7 @@ https://<user>.github.io/claude-billing-cycle-tile/?start=2026-07-05&end=2026-08
 Keeping it in the URL means your actual billing dates live in your own Notion
 page rather than in this public repo. `?start=`/`?end=` are ISO dates
 (`YYYY-MM-DD`) and together set a literal custom range, same as picking two
-dates in the tile — the period shown is exactly the one given, with no
+dates in the tile - the period shown is exactly the one given, with no
 rolling forward. `?day=` falls back to the 1st if nothing is set, and clamps
 in months too short to contain it (February, for instance).
 
@@ -76,7 +76,7 @@ in months too short to contain it (February, for instance).
 re-applied on every load, so a choice made in the calendar won't survive a
 refresh while the parameter is present. Pick one: keep the parameter in the
 embed URL, *or* drop it and use the picker. In Notion the URL is the reliable
-choice — embeds render in a sandboxed iframe where `localStorage` is often
+choice - embeds render in a sandboxed iframe where `localStorage` is often
 unavailable.
 
 To bake in a different default, edit `DEFAULT_ANCHOR_DAY` near the top of the

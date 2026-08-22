@@ -50,7 +50,7 @@
     --shadow: none; --pop-shadow: 0 18px 44px -12px rgba(0, 0, 0, .7);
   }
 
-  /* Triple-click background modes. These must come after the theme rules —
+  /* Triple-click background modes. These must come after the theme rules -
      same specificity, so source order decides. */
   :root[data-bg="solid"] { --surface: #161616; --surface-2: #161616; --on-accent: #161616; }
   :root[data-bg="clear"] { --surface: transparent; --surface-2: transparent; }
@@ -81,7 +81,7 @@
     border-top: 2px solid var(--accent);
     border-radius: 12px;
     box-shadow: var(--shadow);
-    /* Not `overflow: hidden` — that would clip the calendar popover. The
+    /* Not `overflow: hidden` - that would clip the calendar popover. The
        header rounds its own top corners instead. */
   }
 
@@ -285,7 +285,7 @@
   /* Days in the committed cycle. */
   .d.in { background: var(--accent); color: var(--on-accent); font-weight: 700; }
   .d.in:hover { background: var(--accent); }
-  /* A range being picked but not yet committed — lighter, so it reads as
+  /* A range being picked but not yet committed - lighter, so it reads as
      provisional next to the solid "in" fill of a saved cycle. */
   .d.pick { background: var(--accent-dim); color: var(--on-accent); }
   .d.pick:hover { background: var(--accent-dim); }
@@ -321,35 +321,35 @@
       <path d="M13 2 4.5 13.5H11l-1 8.5L19.5 10H13z" />
     </svg>
     <h1 class="title">Claude Pro Billing Cycle</h1>
-    <span class="badge" id="badge">—</span>
+    <span class="badge" id="badge">-</span>
   </header>
 
   <div class="body">
     <div class="track"><div class="fill" id="fill"></div></div>
 
     <div class="scale">
-      <span id="scaleLeft">—</span>
-      <span id="scaleRight">—</span>
+      <span id="scaleLeft">-</span>
+      <span id="scaleRight">-</span>
     </div>
 
     <div class="readout">
       <div class="stats">
         <div class="stat is-lead">
-          <span class="n" id="usedN">—</span>
+          <span class="n" id="usedN">-</span>
           <span class="k">Days used</span>
         </div>
         <div class="stat">
-          <span class="n" id="leftN">—</span>
+          <span class="n" id="leftN">-</span>
           <span class="k">Days left</span>
         </div>
       </div>
 
       <div class="meta">
-        <span class="renews" id="renews">—</span>
+        <span class="renews" id="renews">-</span>
         <div class="picker">
           <button class="trigger" id="trigger" type="button"
                   aria-haspopup="dialog" aria-expanded="false" aria-controls="pop">
-            <span id="triggerLabel">—</span>
+            <span id="triggerLabel">-</span>
             <svg class="chev" width="10" height="10" viewBox="0 0 24 24" fill="none"
                  stroke="currentColor" stroke-width="3" stroke-linecap="round"
                  stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
@@ -386,7 +386,7 @@
   // ── Config ────────────────────────────────────────────────────────────
   // Fallback renewal day, used when nothing else is set. Set your real one
   // per-embed with ?day=15 in the URL, or ?start=2026-07-05&end=2026-08-03
-  // for a custom-length cycle — either way that keeps your billing dates in
+  // for a custom-length cycle - either way that keeps your billing dates in
   // your own Notion page rather than in this repo.
   const DEFAULT_ANCHOR_DAY = 1;
 
@@ -416,9 +416,9 @@
 
   // ── Cycle config ──────────────────────────────────────────────────────
   // Two shapes:
-  //   { mode: 'day', day }             — renews on the same day every month
+  //   { mode: 'day', day }             - renews on the same day every month
   //                                       (variable length: 28–31 days).
-  //   { mode: 'range', start, len }    — a fixed-length cycle tiled from an
+  //   { mode: 'range', start, len }    - a fixed-length cycle tiled from an
   //                                       explicit start date, for cycles
   //                                       that don't follow the calendar
   //                                       month. Set by picking two
@@ -448,8 +448,8 @@
     if (raw) {
       try {
         const parsed = JSON.parse(raw);
-        // JSON.parse('30') succeeds and returns the number 30 — it does not
-        // throw — so the legacy bare-day-number format has to be checked
+        // JSON.parse('30') succeeds and returns the number 30 - it does not
+        // throw - so the legacy bare-day-number format has to be checked
         // here, not assumed to fall into the catch below.
         if (typeof parsed === 'number' && parsed >= 1 && parsed <= 31) {
           return { mode: 'day', day: parsed };
@@ -466,7 +466,7 @@
         }
         if (parsed?.mode === 'day' && parsed.day >= 1 && parsed.day <= 31) return parsed;
       } catch {
-        // Non-numeric, non-JSON garbage — fall through to the default.
+        // Non-numeric, non-JSON garbage - fall through to the default.
       }
     }
     return { mode: 'day', day: DEFAULT_ANCHOR_DAY };
@@ -479,7 +479,7 @@
   //
   // A custom range is taken literally: the dates you picked are the dates
   // shown, full stop. It deliberately does NOT repeat forward to whichever
-  // window happens to contain today — doing that meant any range you chose
+  // window happens to contain today - doing that meant any range you chose
   // snapped back to "today's window", so you could never actually display
   // the dates you selected.
   //
@@ -496,7 +496,7 @@
           total: daysBetween(start, renewal)
         };
       }
-      // Corrupt range — fall through to a sane monthly cycle rather than
+      // Corrupt range - fall through to a sane monthly cycle rather than
       // rendering NaNs.
     }
     let y = date.getFullYear(), m = date.getMonth();
@@ -526,14 +526,14 @@
 
   // ── Calendar popover ──────────────────────────────────────────────────
   // Click one date, then a second, to set a custom-length cycle running
-  // between them — the range previews live as you hover. Click the same
+  // between them - the range previews live as you hover. Click the same
   // date twice instead to fall back to the simple "same day every month"
   // cycle, same as a single click always did before.
   const trigger = document.getElementById('trigger');
   const pop = document.getElementById('pop');
   let viewY, viewM;          // left-hand month currently shown
-  let pickStart = null;      // Date | null — set after the first click
-  let hoverEnd = null;       // Date | null — live end while hovering
+  let pickStart = null;      // Date | null - set after the first click
+  let hoverEnd = null;       // Date | null - live end while hovering
 
   function pickRange() {
     if (!pickStart) return null;
@@ -543,7 +543,7 @@
 
   // `data-committed` records whether a cell falls in the saved cycle,
   // independent of whatever 'pick'/'pick-start' classes get toggled on top
-  // of it while a range is being previewed — see applyPreview().
+  // of it while a range is being previewed - see applyPreview().
   function monthGrid(y, m, today, committed) {
     const lead = new Date(y, m, 1).getDay();
     const count = lastDayOf(y, m);
@@ -571,7 +571,7 @@
   // Deliberately never touches innerHTML: doing that mid-gesture (this runs
   // on every mouseover while picking) can detach the very button the user's
   // mouse is over between mousedown and mouseup, which silently drops the
-  // click — the bug behind "clicking doesn't select anything."
+  // click - the bug behind "clicking doesn't select anything."
   function applyPreview(preview) {
     pop.querySelectorAll('.d[data-iso]').forEach((cell) => {
       const date = parseISODate(cell.dataset.iso);
@@ -604,7 +604,7 @@
     }
   }
 
-  // Full rebuild — only called for discrete actions (open, month nav,
+  // Full rebuild - only called for discrete actions (open, month nav,
   // commit), never while a hover gesture might be mid-flight. See
   // applyPreview() for the hover-safe path.
   function renderCal() {
@@ -669,7 +669,7 @@
     if (!pickStart) {
       pickStart = date;
       hoverEnd = date;
-      // Class-toggle only here too — see applyPreview()'s comment for why
+      // Class-toggle only here too - see applyPreview()'s comment for why
       // this can't be a full renderCal() rebuild.
       const preview = pickRange();
       applyPreview(preview);
